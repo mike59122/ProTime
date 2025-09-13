@@ -35,12 +35,6 @@ class ProTime extends eqLogic {
       return;
     }
 
-    //$chemin = '/var/www/html/plugins/ProTime/resources';
-    //$commande = "chmod -R 777 " . escapeshellarg($chemin);
-    //exec($commande, $output, $code);
-
-
-
     foreach ($moisArray as $mois){
 
       $fichier_html =  __DIR__ . '/../../resources/result-'.$mois.'.html';
