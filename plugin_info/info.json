@@ -1,0 +1,12 @@
+{
+  "id": "ProTime",
+  "name": "ProTime",
+  "description": "récupération des infos de pointages via le portail myprotime",
+  "pluginVersion": "1.0",
+  "require": "4.4",
+  "licence": "AGPL",
+  "author": "OZAER Michaël",
+  "category": "automatisation",
+  "hasDependency": true,
+  "compatibility": ["rpi", "v4"]
+}
