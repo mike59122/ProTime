@@ -1,11 +1,8 @@
-<img align="right" src="plugin_info/planification_icon.png" width="150">
+<img align="right" src="plugin_info/ProTime_icon.png" width="150">
 
-# Jeedom-planification
+# Jeedom-ProTime
 
-planification
+ProTime
 
-*[Documentation](https://raw.githack.com/Famille-OZAER/planification/master/docs/documentation.html)*
-
-*[changelog](https://raw.githack.com/Famille-OZAER/planification/master/docs/changelog.html)*
 
 
