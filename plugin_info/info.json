@@ -8,9 +8,9 @@
   "author": "OZAER Michaël",
   "category": "automatisation",
   "hasDependency": true,
-  "changelog": "https://raw.githack.com/Famille-OZAER/planification/main/docs/changelog.html",
-  "changelog_beta": "https://raw.githack.com/Famille-OZAER/planification/main/docs/changelog.html",
-  "documentation": "https://raw.githack.com/Famille-OZAER/planification/main/docs/documentation.html",
-  "documentation_beta": "https://raw.githack.com/Famille-OZAER/planification/main/docs/documentation.html",
+  "changelog": "https://raw.githack.com/mike59122/ProTime/main/docs/changelog.html",
+  "changelog_beta": "https://raw.githack.com/mike59122/ProTime/main/docs/changelog.html",
+  "documentation": "https://raw.githack.com/mike59122/ProTime/main/docs/documentation.html",
+  "documentation_beta": "https://raw.githack.com/mike59122/ProTime/main/docs/documentation.html",
   "compatibility": ["rpi", "v4"]
 }
