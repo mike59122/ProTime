@@ -8,24 +8,8 @@ const { execSync } = require('child_process');
 const LOG_PATH = path.join(__dirname, '../../../log/ProTime');
 
 // 🧠 Logging
+
 function getTimestamp() {
-  const now = new Date.toLocaleString('fr-FR', {
-    timeZone: 'Europe/Paris',
-    hour12: false
-  }).replace(',', '');
-
-
-  const pad = (n) => n.toString().padStart(2, '0');
-
-  const year = now.getFullYear();
-  const month = pad(now.getMonth() + 1); // mois = 0-indexé
-  const day = pad(now.getDate());
-  const hours = pad(now.getHours());
-  const minutes = pad(now.getMinutes());
-  const seconds = pad(now.getSeconds());
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}function getTimestamp() {
   const now = new Date();
 
   const pad = (n) => n.toString().padStart(2, '0');
@@ -39,6 +23,7 @@ function getTimestamp() {
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
+
 
 
 function log(message, level = 'INFO', showConsole = true) {
@@ -71,9 +56,9 @@ function detectChromiumPath() {
 }
 
 // 🧹 Suppression des fichiers HTML
-function cleanHtmlFiles() {
+function cleanHtmlPngFiles() {
   fs.readdirSync(__dirname).forEach(file => {
-    if (file.endsWith('.html')) {
+    if (file.endsWith('.html') || file.endsWith('.png')) {
       try {
         fs.unlinkSync(path.join(__dirname, file));
         // log(`Supprimé : ${file}`);
@@ -82,16 +67,35 @@ function cleanHtmlFiles() {
       }
     }
   });
+ 
 }
 
+// 🔁 Navigation avec retry
+async function safeGoto(page, url, label = 'page', maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      log(`Tentative ${i + 1} : chargement de ${url}`);
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+      log(`Chargement réussi`);
+      return true;
+    } catch (err) {
+      log(`Échec tentative ${i + 1} : ${err.message}`);
+      if (i === maxRetries - 1){
+        fs.writeFileSync(path.join(__dirname, `debug-missing-${label}.html`), html);
+        throw err;
+      } 
+      await page.waitForTimeout(5000); // pause entre les tentatives
+    }
+  }
+}
 
 
 // 🔐 Authentification SSO + chargement de la page
 async function startSession(page, targetUrl, dateParam, username, password) {
   const fullUrl = `${targetUrl}?date=${dateParam}`;
   //log(`Ouverture de la page : ${fullUrl}`);
-  await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-
+  await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+//await safeGoto(page, fullUrl, `URL ${dateParam}`);
   if (page.url().includes('fromunion.myprotime.eu')) {
     const isLoggedIn = await page.$('.hubMenu');
     if (isLoggedIn) {
@@ -108,15 +112,16 @@ async function startSession(page, targetUrl, dateParam, username, password) {
 
     log('Soumission du formulaire SSO');
     await page.click('button[type="submit"]');
-    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
+   //await safeGoto(page, fullUrl, `URL ${dateParam}`);
 
-    await page.waitForURL(fullUrl, { timeout: 30000 });
+     page.waitForURL(fullUrl, { timeout: 120000 });
     log(`Retour sur le site principal`);
 
   }
   if (!page.url().includes('https://authentication.myprotime.eu/tenants/')) {
     log('Attente de redirection vers le serveur d’authentification...');
-    await page.waitForURL(fullUrl, { timeout: 30000 });
+     page.waitForURL(fullUrl, { timeout: 120000 });
     log('Redirection terminée');
   }
 
@@ -128,9 +133,49 @@ async function startSession(page, targetUrl, dateParam, username, password) {
 }
 
 // 🔍 Attente sécurisée d’un élément
-async function safeWaitForSelector(page, selector, label = selector, timeout = 15000) {
+async function safeWaitForSelector(page, selector, label = selector, timeout = 60000, retries = 3, delay = 3000) {
+  const safeName = label.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      log(`Tentative ${i + 1}/${retries}: attente de l’élément ${label}`);
+      await page.waitForSelector(selector, { timeout });
+      log(`Élément détecté : ${label}`);
+      return true;
+    } catch (err) {
+      log(`Échec tentative ${i + 1} : élément non trouvé (${label})`);
+      if (i < retries - 1) {
+        await page.waitForTimeout(delay);
+      } else {
+        // Dernière tentative échouée : capture HTML + screenshot
+        try {
+          const html = await page.content();
+          fs.writeFileSync(path.join(__dirname, `debug-missing-${safeName}.html`), html);
+          log(`HTML sauvegardé : debug-missing-${safeName}.html`);
+        } catch (e) {
+          log(`Impossible de capturer le HTML : ${e.message}`);
+        }
+
+        try {
+          await page.screenshot({ path: path.join(__dirname, `debug-missing-${safeName}.png`) });
+          log(`Screenshot capturé : debug-missing-${safeName}.png`);
+        } catch (e) {
+          log(`Erreur screenshot : ${e.message}`);
+        }
+
+        return false;
+      }
+    }
+  }
+}
+
+/*async function safeWaitForSelector(page, selector, label = selector, timeout = 60000) {
+ for (let i = 0; i < retries; i++) {
+
   try {
-    log(`Attente de l’élément : ${label}`);
+     log(`Tentative ${i + 1} : attente de l’élément ${label}`);
+
+    //log(`Attente de l’élément : ${label}`);
     await page.waitForSelector(selector, { timeout });
     log(`Élément détecté : ${label}`);
     return true;
@@ -146,10 +191,10 @@ async function safeWaitForSelector(page, selector, label = selector, timeout = 1
     return false;
   }
 }
-
+*/
 // 🚀 Script principal
 (async () => {
-  cleanHtmlFiles();
+  cleanHtmlPngFiles();
   const executablePath = detectChromiumPath();
 
   const browser = await chromium.launch({

@@ -7,10 +7,58 @@
 
 class ProTime extends eqLogic {
 
+public function copie_html_png($eqLogic){
+  $sourceDir = __DIR__ . '/../../resources/';
+  $destinationDir = __DIR__ . '/../../archives/';
 
+  // 🔧 Crée le dossier destination s’il n’existe pas
+  if (!is_dir($destinationDir)) {
+      mkdir($destinationDir, 0755, true);
+  }
+
+  // 📁 Liste tous les fichiers HTML dans le dossier source
+  $htmlFiles = glob($sourceDir . '*.html');
+
+  foreach ($htmlFiles as $filePath) {
+      $filename = basename($filePath); // ex: debug-missing-10-2025.html
+      $horodatage = date('H:i'); // ex: 04:12
+
+      // 🧩 Nouveau nom avec horodatage
+      $newFilename = pathinfo($filename, PATHINFO_FILENAME) . ' ' . $horodatage . '(' . $eqLogic->getId() .')' . '.html';
+      $destinationPath = $destinationDir . $newFilename;
+
+      // 📤 Copie
+      if (copy($filePath, $destinationPath)) {
+         self::add_log('info',  "✅ Copié : $filename → $newFilename");
+      } else {
+           self::add_log('error',  "❌ Échec : $filename");
+      }
+  }
+
+   // 📁 Liste tous les fichiers png dans le dossier source
+  $pngFiles = glob($sourceDir . '*.png');
+
+  foreach ($pngFiles as $filePath) {
+      $filename = basename($filePath); // ex: debug-missing-10-2025.png
+      $horodatage = date('H:i'); // ex: 04:12
+
+      // 🧩 Nouveau nom avec horodatage
+      $newFilename = pathinfo($filename, PATHINFO_FILENAME) . ' ' . $horodatage . '(' . $eqLogic->getId() .')' . '.png';
+      $destinationPath = $destinationDir . $newFilename;
+
+      // 📤 Copie
+      if (copy($filePath, $destinationPath)) {
+         self::add_log('info',  "✅ Copié : $filename → $newFilename");
+      } else {
+           self::add_log('error',  "❌ Échec : $filename");
+      }
+  }
+
+
+}
   public function traiterPointages($moisArray, $username, $password, $urlBase, $eqLogic) {
     $script = __DIR__ . '/../../resources/scrape-pointages.js';
-
+    $html='';
 
     // Construction de la commande
     $jsonMois = json_encode($moisArray);
@@ -32,13 +80,15 @@ class ProTime extends eqLogic {
             $cmd->event(1);
           }
         }
+         self::copie_html_png($eqLogic);
       return;
     }
 
     foreach ($moisArray as $mois){
 
       $fichier_html =  __DIR__ . '/../../resources/result-'.$mois.'.html';
-      if (file_exists($fichier_html)) {
+      $fichiersHtml = glob(__DIR__ . '/../../resources/*.html');
+      if (file_exists($fichier_html) && count($fichiersHtml) == 1) {
 
         $html = file_get_contents($fichier_html);
         if (self::verifierMaintenance($html)) {
@@ -76,10 +126,12 @@ class ProTime extends eqLogic {
             $cmd->event(1);
           }
         }
+       
+       
         self::add_log('error', "⛔ Fichier illisible : $fichier_html");
       }
     }
-
+    self::copie_html_png($eqLogic);
     return $html;
 
   }
