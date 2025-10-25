@@ -690,19 +690,20 @@ public static function cronHourly() {
   $day = date('w', $now); // 0 = dimanche, 5 = vendredi, 6 = samedi
   $hour = date('G', $now); // heure en format 0–23
  
-  
-  
+  // 🛑 Blocage du week-end sauf à 00h00 et dimanche à partir de 22h
+  if ($day == 6 || $day == 0) {
+    if ($hour != 0 && !($day == 0 && $hour >= 22)) {
+      self::add_log('info', "⏳ Cron ignoré (week-end sauf 00h00 et dimanche après 22h).");
+      return;
+    }
+  }
 
-  // ⛔ Blocage du samedi 3h au dimanche 22h00
-  /*if (($day == 6 && $hour >= 2) || ($day == 0 && $hour < 22)) {
-    self::add_log('info', "⏳ Cron ignoré (plage bloquée du samdei 3h au dimanche 22h ).");
-    return;
-  }*/
-  // ⏳ Ignorer si l'heure est impaire
-  if ($hour % 2 !== 0) {
+  // ⏳ Du lundi au vendredi : ignorer si l'heure est impaire
+  if ($day >= 1 && $day <= 5 && $hour % 2 !== 0) {
     self::add_log('info', "⏳ Heure impaire ($hour h) → contrôle ignoré.");
     return;
   }
+
   // 🔁 Traitement normal
   $eqLogics = eqLogic::byType('ProTime');
   foreach ($eqLogics as $eqLogic) {
