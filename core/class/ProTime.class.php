@@ -365,6 +365,8 @@ public function copie_html_png($eqLogic){
 
   public static function renderTablePointage(int $eqLogicId, DateTime $mois): string {//Fonction pour AJAX
 
+    
+    
 
     $startDate = $mois->format('Y-m-01');
     $endDate   = $mois->format('Y-m-t');
@@ -375,9 +377,10 @@ public function copie_html_png($eqLogic){
     $html .= '<thead><tr><th>Date</th><th>Début</th><th>Fin</th><th>Durée</th><th>Absence</th></tr></thead><tbody>';
 
     foreach ($pointages as $ligne) {
-
+      setlocale(LC_TIME, 'fr_FR.UTF-8'); // ou 'fr_FR.utf8' selon ton système
+      $date = strftime('%A %d %B %Y', strtotime($ligne['date']));
       $html .= "<tr>";
-      $html .= '<td>' . $ligne['date'] . '</td>';
+      $html .= '<td>' . $date . '</td>';
       $html .= '<td>' . ($ligne['heure_debut'] ?? '-') . '</td>';
       $html .= '<td>' . ($ligne['heure_fin'] ?? '-') . '</td>';
       $html .= '<td>' . ($ligne['duree'] ?? '-') . '</td>';
@@ -682,8 +685,41 @@ public function copie_html_png($eqLogic){
       throw new Exception(__('Le champ Mot de passe ne peut pas être vide', __FILE__));
     }
   }
+public static function cronHourly() {
+  $now = time();
+  $day = date('w', $now); // 0 = dimanche, 5 = vendredi, 6 = samedi
+  $hour = date('G', $now); // heure en format 0–23
+ 
+  
+  // ⏳ Ignorer si l'heure est impaire
+  if ($hour % 2 !== 0) {
+    self::add_log('info', "⏳ Heure impaire ($hour h) → contrôle ignoré.");
+    return;
+  }
 
-  public static function cronHourly() {
+  // ⛔ Blocage du vendredi 23h00 au dimanche 22h00 sauf le samedi de 00h00 à 02h00
+  if (($day == 5 && $hour >= 23) || ($day == 6 && $hour >= 2) || ($day == 0 && $hour < 22)) {
+    self::add_log('info', "⏳ Cron ignoré (plage bloquée du vendredi 23h au dimanche 22h).");
+    return;
+  }
+
+  // 🔁 Traitement normal
+  $eqLogics = eqLogic::byType('ProTime');
+  foreach ($eqLogics as $eqLogic) {
+    try {
+      self::add_log('info', "------------------------------------------------");
+      self::add_log('info', "Vérification séquentielle Vérification (heure paire) → " . $eqLogic->getHumanName());
+      $eqLogic->RecupInfos();
+    } catch (Exception $e) {
+      self::add_log('error', "Erreur sur " . $eqLogic->getHumanName() . " : " . $e->getMessage());
+    }
+    sleep(1);
+  }
+
+  self::add_log('info', "✅ Fin du contrôle (heure paire) pour tous les équipements ProTime.");
+}
+
+  /*public static function cronHourly() {
 
     $eqLogics = eqLogic::byType('ProTime');
     foreach ($eqLogics as $eqLogic) {
@@ -700,7 +736,7 @@ public function copie_html_png($eqLogic){
       // 💤 Petite pause entre deux si tu veux temporiser
       sleep(1);
     }
-  }
+  }*/
 
 }
 
