@@ -691,18 +691,18 @@ public static function cronHourly() {
   $hour = date('G', $now); // heure en format 0–23
  
   
-  // ⏳ Ignorer si l'heure est impaire
-  if ($hour % 2 !== 0) {
-    self::add_log('info', "⏳ Heure impaire ($hour h) → contrôle ignoré.");
-    return;
-  }
+  
 
   // ⛔ Blocage du vendredi 23h00 au dimanche 22h00 sauf le samedi de 00h00 à 02h00
   if (($day == 5 && $hour >= 23) || ($day == 6 && $hour >= 2) || ($day == 0 && $hour < 22)) {
     self::add_log('info', "⏳ Cron ignoré (plage bloquée du vendredi 23h au dimanche 22h).");
     return;
   }
-
+  // ⏳ Ignorer si l'heure est impaire
+  if ($hour % 2 !== 0) {
+    self::add_log('info', "⏳ Heure impaire ($hour h) → contrôle ignoré.");
+    return;
+  }
   // 🔁 Traitement normal
   $eqLogics = eqLogic::byType('ProTime');
   foreach ($eqLogics as $eqLogic) {
