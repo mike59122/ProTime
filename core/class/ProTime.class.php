@@ -6,56 +6,64 @@
 
 
 class ProTime extends eqLogic {
+  static function add_log($level = 'debug', $Log) {
+    if (is_array($Log)) $Log = json_encode($Log);
+    if (is_object($Log)) $Log = json_encode($Log);
+    if(count(debug_backtrace(false, 2)) == 1){
+      $function_name = debug_backtrace(false, 2)[0]['function'];
+      $ligne = debug_backtrace(false, 2)[0]['line'];
+    }else{
+      $function_name = debug_backtrace(false, 2)[1]['function'];
+      $ligne = debug_backtrace(false, 2)[0]['line'];
+    }
+    $msg =  $function_name .' (' . $ligne . '): '.$Log;
+    log::add("ProTime", $level, $msg);
+  }
+  public function copie_html_png($eqLogic){
+    $sourceDir = __DIR__ . '/../../resources/';
+    $destinationDir = __DIR__ . '/../../archives/';
 
-public function copie_html_png($eqLogic){
-  $sourceDir = __DIR__ . '/../../resources/';
-  $destinationDir = __DIR__ . '/../../archives/';
-
-  // 🔧 Crée le dossier destination s’il n’existe pas
-  if (!is_dir($destinationDir)) {
+    // 🔧 Crée le dossier destination s’il n’existe pas
+    if (!is_dir($destinationDir)) {
       mkdir($destinationDir, 0755, true);
-  }
+    }
 
-  // 📁 Liste tous les fichiers HTML dans le dossier source
-  $htmlFiles = glob($sourceDir . '*.html');
+    $dateDuJour = date('Y-m-d'); // Format AAAA-MM-JJ
+    $now = new DateTime();
+    $horodatage = $now->format('Y-m-d') . ' ' . $now->format('H') . 'h' . $now->format('i');
+    $id = $eqLogic->getId();
 
-  foreach ($htmlFiles as $filePath) {
-      $filename = basename($filePath); // ex: debug-missing-10-2025.html
-      $horodatage = date('H:i'); // ex: 04:12
-
-      // 🧩 Nouveau nom avec horodatage
-      $newFilename = pathinfo($filename, PATHINFO_FILENAME) . ' ' . $horodatage . '(' . $eqLogic->getId() .')' . '.html';
+    // 📁 Copie des fichiers HTML
+    foreach (glob($sourceDir . '*.html') as $filePath) {
+      $filename = basename($filePath); // ex: debug-missing-2025-10-01.html
+      $newFilename = "$id-$horodatage-$filename";
       $destinationPath = $destinationDir . $newFilename;
 
-      // 📤 Copie
       if (copy($filePath, $destinationPath)) {
-         self::add_log('info',  "✅ Copié : $filename → $newFilename");
+        self::add_log('info', "✅ Copié : $filename → $newFilename");
       } else {
-           self::add_log('error',  "❌ Échec : $filename");
+        self::add_log('error', "❌ Échec : $filename");
       }
-  }
+    }
 
-   // 📁 Liste tous les fichiers png dans le dossier source
-  $pngFiles = glob($sourceDir . '*.png');
+    // 📁 Copie des fichiers PNG
+    foreach (glob($sourceDir . '*.png') as $filePath) {
+      $filename = basename($filePath); // ex: debug-missing-2025-10-01.png
 
-  foreach ($pngFiles as $filePath) {
-      $filename = basename($filePath); // ex: debug-missing-10-2025.png
-      $horodatage = date('H:i'); // ex: 04:12
-
-      // 🧩 Nouveau nom avec horodatage
-      $newFilename = pathinfo($filename, PATHINFO_FILENAME) . ' ' . $horodatage . '(' . $eqLogic->getId() .')' . '.png';
+      $newFilename = "$id-$horodatage-$filename";
       $destinationPath = $destinationDir . $newFilename;
 
-      // 📤 Copie
       if (copy($filePath, $destinationPath)) {
-         self::add_log('info',  "✅ Copié : $filename → $newFilename");
+        self::add_log('info', "✅ Copié : $filename → $newFilename");
       } else {
-           self::add_log('error',  "❌ Échec : $filename");
+        self::add_log('error', "❌ Échec : $filename");
       }
+    }
   }
 
 
-}
+
+
   public function traiterPointages($moisArray, $username, $password, $urlBase, $eqLogic) {
     $script = __DIR__ . '/../../resources/scrape-pointages.js';
     $html='';
@@ -75,20 +83,20 @@ public function copie_html_png($eqLogic){
       self::add_log('debug', 'Retour scrape-pointages.js : ' . implode("\n", $output));
       self::add_log('info', "⛔ Erreur lors de l'exécution du script scrape-pointages.js" );
       $cmd = cmd::byEqLogicIdAndLogicalId(  $eqLogic->getId(),  "erreur");
-        if (is_object($cmd)){
-          if ($cmd->execCmd() != 1){
-            $cmd->event(1);
-          }
+      if (is_object($cmd)){
+        if ($cmd->execCmd() != 1){
+          $cmd->event(1);
         }
-         self::copie_html_png($eqLogic);
+      }
+      self::copie_html_png($eqLogic);
       return;
     }
 
     foreach ($moisArray as $mois){
 
       $fichier_html =  __DIR__ . '/../../resources/result-'.$mois.'.html';
-      $fichiersHtml = glob(__DIR__ . '/../../resources/*.html');
-      if (file_exists($fichier_html) && count($fichiersHtml) == 1) {
+      //$fichiersHtml = glob(__DIR__ . '/../../resources/*.html');
+      if (file_exists($fichier_html) ) {
 
         $html = file_get_contents($fichier_html);
         if (self::verifierMaintenance($html)) {
@@ -96,9 +104,9 @@ public function copie_html_png($eqLogic){
           return 'maintenance';
         }
         self::getAllPointages($html, $eqLogic, substr($mois, 0, 4));
-         self::add_log('info', $mois);
+        self::add_log('info', $mois);
         $moisCourant = new DateTime('first day of this month');
-         self::add_log('info',$moisCourant->format('Y-m-d'));
+        self::add_log('info',$moisCourant->format('Y-m-d'));
         if($mois == $moisCourant->format('Y-m-d')){
           foreach ([
             'pointage_jour' => date('Y-m-d'),
@@ -126,8 +134,8 @@ public function copie_html_png($eqLogic){
             $cmd->event(1);
           }
         }
-       
-       
+
+
         self::add_log('error', "⛔ Fichier illisible : $fichier_html");
       }
     }
@@ -136,19 +144,7 @@ public function copie_html_png($eqLogic){
 
   }
 
-  static function add_log($level = 'debug', $Log) {
-    if (is_array($Log)) $Log = json_encode($Log);
-    if (is_object($Log)) $Log = json_encode($Log);
-    if(count(debug_backtrace(false, 2)) == 1){
-      $function_name = debug_backtrace(false, 2)[0]['function'];
-      $ligne = debug_backtrace(false, 2)[0]['line'];
-    }else{
-      $function_name = debug_backtrace(false, 2)[1]['function'];
-      $ligne = debug_backtrace(false, 2)[0]['line'];
-    }
-    $msg =  $function_name .' (' . $ligne . '): '.$Log;
-    log::add("ProTime", $level, $msg);
-  }
+
 
   public static function dependancy_info() {
 
@@ -365,8 +361,8 @@ public function copie_html_png($eqLogic){
 
   public static function renderTablePointage(int $eqLogicId, DateTime $mois): string {//Fonction pour AJAX
 
-    
-    
+
+
 
     $startDate = $mois->format('Y-m-01');
     $endDate   = $mois->format('Y-m-t');
@@ -400,7 +396,7 @@ public function copie_html_png($eqLogic){
     return DateTime::createFromFormat('H:i', $heureStr) ?: null;
   }
 
-  public function RecupInfos() {
+  public function RecupInfos($douze_derniers_mois = false) {
     self::installerTablePointage();
 
     $start = microtime(true);
@@ -410,45 +406,48 @@ public function copie_html_png($eqLogic){
     $eqLogic = $this;
 
     try {
-      $aujourdHui = new DateTime();
-      $moisCourant = new DateTime('first day of this month');
-      $moisPrecedent = new DateTime('first day of last month');
-      $dernierJourPrecedent = new DateTime('last day of last month');
-
-      // 📋 Par défaut, on veut le mois courant
-      $moisAExtraire = [$moisCourant];
-
-      // 🔍 Vérifie si le dernier jour du mois précédent est incomplet
-      if ($aujourdHui->format('d') === '01') {
-        $dateDernierJour = $dernierJourPrecedent->format('Y-m-d');
-        $pointages = self::getPointagesParDate($eqLogic->getId(), $dateDernierJour);
-        if (!empty($pointages[0]["heure_debut"]) && empty($pointages[0]["heure_fin"]) && !empty($pointages[0]["absence"])) {
-          $moisAExtraire[] = $moisPrecedent;
-          self::add_log('info', "Pointage incomplet le $dateDernierJour → mois précédent à recharger.");
-        } else {
-          self::add_log('info', "Dernier jour du mois précédent est complet.");
+      if($douze_derniers_mois){
+        $moisAExtraire = [];
+        for ($i = 0; $i < 12; $i++) {
+          $mois = new DateTime('first day of this month');
+          $mois->modify("-$i month");
+          $moisAExtraire[] = $mois;
         }
+      }else{
+
+        $aujourdHui = new DateTime();
+        $moisCourant = new DateTime('first day of this month');
+        $moisPrecedent = new DateTime('first day of last month');
+        $dernierJourPrecedent = new DateTime('last day of last month');
+
+        // 📋 Par défaut, on veut le mois courant
+        $moisAExtraire = [$moisCourant];
+
+        // 🔍 Vérifie si le dernier jour du mois précédent est incomplet
+        if ($aujourdHui->format('d') === '01') {
+          $dateDernierJour = $dernierJourPrecedent->format('Y-m-d');
+          $pointages = self::getPointagesParDate($eqLogic->getId(), $dateDernierJour);
+          if (!empty($pointages[0]["heure_debut"]) && empty($pointages[0]["heure_fin"]) && !empty($pointages[0]["absence"])) {
+            $moisAExtraire[] = $moisPrecedent;
+            self::add_log('info', "Pointage incomplet le $dateDernierJour → mois précédent à recharger.");
+          } else {
+            self::add_log('info', "Dernier jour du mois précédent est complet.");
+          }
+        }
+
+        // 🔁 Extraction des mois nécessaires
+
+        $moisEnvoyes = [];
+
+
       }
-
-      // 🔁 Extraction des mois nécessaires
-
-      $moisEnvoyes = [];
-
       foreach ($moisAExtraire as $mois) {
 
         $moisEnvoyes[] = $mois->format('Y-m-d');       // ✅ Ajout dans le tableau
-        //self::add_log('info', $moisEnvoyes[]);
-        //$url = $urlBase . '?date=' . $mois->format('Y-m-d');
-        //self::add_log('info',  Extraction du mois : $moisTxt → $url");
 
-        // Traitement local si nécessaire
-        //$html = self::traiterPointages($mois->format('Y-m-d'), $username, $password, $urlBase, $eqLogic);
 
       }
-
       self::traiterPointages($moisEnvoyes, $username, $password, $urlBase, $eqLogic);
-
-      // 📌 Mise à jour des commandes jour & veille
 
 
       // ⏱️ Durée
@@ -457,7 +456,7 @@ public function copie_html_png($eqLogic){
 
 
       self::add_log('info', "⏱️ Durée totale d’exécution : {$duree} sec");
-
+      self::add_log('info', "=====================================================================");
     }catch (Throwable $e) {
       $message = $e->getMessage();
       if (empty($message)) {
@@ -474,52 +473,7 @@ public function copie_html_png($eqLogic){
 
   }
 
-  public function RecupInfosDerniersMois() {
-    self::installerTablePointage();
-    $start = microtime(true);
-    $username = $this->getConfiguration('username');
-    $password = $this->getConfiguration('password');
-    $urlBase = $this->getConfiguration('url_login');
-    $eqLogic = $this;
-
-    self::add_log('info', 'Démarrage extraction des 12 derniers mois manuelle');
-
-    $moisAExtraire = [];
-    for ($i = 0; $i < 12; $i++) {
-      $mois = new DateTime('first day of this month');
-      $mois->modify("-$i month");
-      $moisAExtraire[] = $mois;
-    }
-
-    foreach ($moisAExtraire as $mois) {
-      $url = $urlBase . '?date=' . $mois->format('Y-m-d');
-      self::add_log('info', "Extraction : " . $mois->format('Y-m') . " → $url");
-      //$html = self::naviguerEtRecupererHtml($url, $username, $password);
-      $html = self::traiterPointages($mois->format('Y-m-d'), $username, $password, $urlBase, $eqLogic);
-      if ($html != "maintenance") {
-        self::getAllPointages($html, $eqLogic,$mois->format('Y'));
-      }
-      foreach ([
-        'pointage_jour' => date('Y-m-d'),
-        'pointage_veille' => date('Y-m-d', strtotime('-1 day'))
-      ] as $logicalId => $dateTest) {
-        $cmd = $this->getCmd(null, $logicalId);
-        if (is_object($cmd)) {
-          $pointages = self::getPointagesParDate($eqLogic->getId(), $dateTest);
-          $present = isset($pointages[0]["heure_debut"]) && !empty($pointages[0]["heure_debut"]) ? 1 : 0;
-          $cmd->event($present);
-          self::add_log('info', "Présence pour $logicalId ($dateTest) : " . ($present ? "Oui" : "Non"));
-        }
-      }
-    }
-
-    $end = microtime(true);
-    $duree = round($end - $start, 2);
-    self::add_log('info', "Extraction terminée : {$duree} sec");
-
-    exec('sudo pkill -f chromedriver');
-    exec('sudo pkill -f chromium');
-  }
+ 
 
 
 
@@ -685,60 +639,41 @@ public function copie_html_png($eqLogic){
       throw new Exception(__('Le champ Mot de passe ne peut pas être vide', __FILE__));
     }
   }
-public static function cronHourly() {
-  $now = time();
-  $day = date('w', $now); // 0 = dimanche, 5 = vendredi, 6 = samedi
-  $hour = date('G', $now); // heure en format 0–23
- 
-  // 🛑 Blocage du week-end sauf à 00h00 et dimanche à partir de 22h
-  if ($day == 6 || $day == 0) {
-    if ($hour != 0 && !($day == 0 && $hour >= 22)) {
-      self::add_log('info', "⏳ Cron ignoré (week-end sauf 00h00 et dimanche après 22h).");
+  public static function cronHourly() {
+    $now = time();
+    $day = date('w', $now); // 0 = dimanche, 5 = vendredi, 6 = samedi
+    $hour = date('G', $now); // heure en format 0–23
+    self::add_log('info', "=====================================================================");
+    // 🛑 Blocage du week-end sauf à 00h00 et dimanche à partir de 22h
+    if ($day == 6 || $day == 0) {
+      if ($hour != 0 && !($day == 0 && $hour >= 22)) {
+        self::add_log('info', "⏳ Cron ignoré (week-end sauf 00h00 et dimanche après 22h).");
+        self::add_log('info', "=====================================================================");
+        return;
+      }
+    }
+
+    // ⏳ Du lundi au vendredi : ignorer si l'heure est impaire
+    if ($day >= 1 && $day <= 5 && $hour % 2 !== 0) {
+      self::add_log('info', "⏳ Heure impaire ($hour h) → contrôle ignoré.");
       return;
     }
-  }
 
-  // ⏳ Du lundi au vendredi : ignorer si l'heure est impaire
-  if ($day >= 1 && $day <= 5 && $hour % 2 !== 0) {
-    self::add_log('info', "⏳ Heure impaire ($hour h) → contrôle ignoré.");
-    return;
-  }
-
-  // 🔁 Traitement normal
-  $eqLogics = eqLogic::byType('ProTime');
-  foreach ($eqLogics as $eqLogic) {
-    try {
-      self::add_log('info', "------------------------------------------------");
-      self::add_log('info', "Vérification séquentielle Vérification (heure paire) → " . $eqLogic->getHumanName());
-      $eqLogic->RecupInfos();
-    } catch (Exception $e) {
-      self::add_log('error', "Erreur sur " . $eqLogic->getHumanName() . " : " . $e->getMessage());
-    }
-    sleep(1);
-  }
-
-  self::add_log('info', "✅ Fin du contrôle (heure paire) pour tous les équipements ProTime.");
-}
-
-  /*public static function cronHourly() {
-
+    // 🔁 Traitement normal
     $eqLogics = eqLogic::byType('ProTime');
     foreach ($eqLogics as $eqLogic) {
       try {
-        self::add_log('info', "------------------------------------------------");
-        self::add_log('info', "Vérification séquentielle (cronHourly) → " . $eqLogic->getHumanName());
 
-        // ⚙️ Lancement du contrôle (bloquant)
-        $eqLogic->RecupInfos();        
+        self::add_log('info', "Vérification séquentielle Vérification (heure paire) → " . $eqLogic->getHumanName());
+        $eqLogic->RecupInfos();
       } catch (Exception $e) {
-        self::add_log('error', "Erreur sur " . $eqLogic->getHumanName() . " : " . $e->getMessage());     
+        self::add_log('error', "Erreur sur " . $eqLogic->getHumanName() . " : " . $e->getMessage());
       }
-
-      // 💤 Petite pause entre deux si tu veux temporiser
       sleep(1);
     }
-  }*/
 
+    self::add_log('info', "✅ Fin du contrôle (heure paire) pour tous les équipements ProTime.");
+  }
 }
 
 
@@ -757,12 +692,14 @@ class ProTimeCmd extends cmd {
     $eqLogic = $this->getEqLogic();
     if ($this->getLogicalId() == 'refresh') {
       $eqLogic::add_log('info', 'execution refresh');
+      $eqLogic::add_log('info', "=====================================================================");
       $eqLogic->RecupInfos();
       return;
     }
     if ($this->getLogicalId() == 'refresh_last_12_months') {
       $eqLogic::add_log('info', 'execution refresh 12 derniers mois');
-      $eqLogic->RecupInfosDerniersMois(); // méthode que tu vas créer juste en dessous
+      $eqLogic::add_log('info', "=====================================================================");
+      $eqLogic->RecupInfos(true); 
     }
 
   }

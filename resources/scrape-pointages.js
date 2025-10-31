@@ -128,8 +128,10 @@ async function startSession(page, targetUrl, dateParam, username, password) {
 
   await safeWaitForSelector(page, '._timecardWrapper_1qtro_5', 'Bloc Timecard');
   const html = await page.content();
+  
   fs.writeFileSync(path.join(__dirname, `result-${dateParam}.html`), html);
   log(`Extraction terminée pour ${dateParam}`);
+  log(`*********************************************************************`);
 }
 
 // 🔍 Attente sécurisée d’un élément
@@ -219,7 +221,7 @@ async function safeWaitForSelector(page, selector, label = selector, timeout = 6
 
 
   for (const mois of moisAExtraire) {
-    log(`=====================================================================`);
+    log(`*********************************************************************`);
     log(`Extraction du mois : ${mois}`);
     try {
       await startSession(page, url, mois, username, password);
